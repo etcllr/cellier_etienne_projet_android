@@ -46,6 +46,11 @@
     </string>
 
     <string name="generate_movie_list">Click on the button "Movies" to generate a movie list.</string>
+    <string name="save">Save</string>
+    <string name="saved_movies">Movies saved !</string>
+    <string name="no_movies">No movies to save !</string>
+    <string name="channel_name">Movie Channel</string>
+    <string name="channel_description">Channel for movie notifications</string>
 
     <string name="movie_api_key">0a9ab4acdf11</string>
 </resources>

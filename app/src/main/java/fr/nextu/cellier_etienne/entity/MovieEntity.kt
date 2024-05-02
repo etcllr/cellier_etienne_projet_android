@@ -8,10 +8,10 @@ import androidx.room.PrimaryKey
 data class MovieEntity(
     @PrimaryKey var id: Int,
     @ColumnInfo(name = "title") var title: String,
-    @ColumnInfo(name = "tmdb_id") var tmdb_id: Int,
-    @ColumnInfo(name = "imdb_id") var imdb_id: String,
-    @ColumnInfo(name = "followers") var followers: Int,
-    @ColumnInfo(name = "production_year") var production_year: Int
+    @ColumnInfo(name = "tmdb_id") var tmdb_id: Int?,
+    @ColumnInfo(name = "imdb_id") var imdb_id: String?,
+    @ColumnInfo(name = "followers") var followers: Int?,
+    @ColumnInfo(name = "production_year") var production_year: Int?
 ) {
     @ColumnInfo(name = "poster", defaultValue = "")
     var poster: String? = ""

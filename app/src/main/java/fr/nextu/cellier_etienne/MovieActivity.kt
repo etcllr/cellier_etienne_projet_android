@@ -1,27 +1,28 @@
 package fr.nextu.cellier_etienne
 
-import android.content.Intent
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import android.view.View
 import android.widget.Button
-import android.widget.ImageButton
 import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import com.google.android.material.snackbar.Snackbar
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.navigation.findNavController
-import androidx.navigation.ui.AppBarConfiguration
-import androidx.navigation.ui.navigateUp
-import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.gson.Gson
 import fr.nextu.cellier_etienne.adapter.MoviesAdapter
-import fr.nextu.cellier_etienne.databinding.ActivityMovieBinding
 import fr.nextu.cellier_etienne.entity.CatalogEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -35,7 +36,12 @@ class MovieActivity : AppCompatActivity() {
     val db: AppDatabase by lazy {
         AppDatabase.getInstance(applicationContext)
     }
+    var catalog = CatalogEntity(emptyList())
+
     lateinit var movies_recycler: RecyclerView
+    private lateinit var requestPermissionLauncher: ActivityResultLauncher<String>
+
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -51,10 +57,39 @@ class MovieActivity : AppCompatActivity() {
             getPictureList()
         }
 
+        findViewById<Button>(R.id.button_save).setOnClickListener {
+            saveMoviesInDB()
+        }
+
         movies_recycler = findViewById<RecyclerView>(R.id.recyclerview_third).apply {
             adapter = MoviesAdapter(CatalogEntity(emptyList()))
             layoutManager = LinearLayoutManager(this@MovieActivity)
         }
+
+        requestPermissionLauncher =
+            registerForActivityResult(
+                ActivityResultContracts.RequestPermission()
+            ) { isGranted: Boolean ->
+                if (isGranted) {
+                    val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+                        .setSmallIcon(R.drawable.ic_launcher_foreground)
+                        .setContentTitle(getString(R.string.saved_movies))
+                        .setContentText(catalog.movies.toString() ?: "")
+                        .setPriority(NotificationCompat.PRIORITY_HIGH)
+                    if (ActivityCompat.checkSelfPermission(
+                            this,
+                            Manifest.permission.POST_NOTIFICATIONS
+                        ) != PackageManager.PERMISSION_GRANTED
+                    ) {
+                        ActivityCompat.requestPermissions(
+                            this,
+                            arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                            1
+                        )
+                    }
+                    NotificationManagerCompat.from(this).notify(1, builder.build())
+                }
+            }
     }
 
     fun getPictureList() = CoroutineScope(Dispatchers.IO).launch {
@@ -62,13 +97,13 @@ class MovieActivity : AppCompatActivity() {
         withContext(Dispatchers.Main) {
             movies_recycler.layoutManager = LinearLayoutManager(this@MovieActivity)
             val gson = Gson()
-            val moviesEntity = gson.fromJson(result, CatalogEntity::class.java)
+            catalog = gson.fromJson(result, CatalogEntity::class.java)
 
-            for (movie in moviesEntity.movies) {
+            for (movie in catalog.movies) {
                 Log.d("Movie", movie.toString())
             }
 
-            movies_recycler.adapter = MoviesAdapter(moviesEntity)
+            movies_recycler.adapter = MoviesAdapter(catalog)
 
             findViewById<TextView>(R.id.textview_third).text = "Movies"
         }
@@ -86,5 +121,53 @@ class MovieActivity : AppCompatActivity() {
         val response: Response = client.newCall(request).execute()
 
         return response.body?.string() ?: ""
+    }
+
+    private fun saveMoviesInDB() {
+        if (catalog.movies.isNotEmpty()) {
+            CoroutineScope(Dispatchers.IO).launch {
+                db.movieDao().insertAll(*catalog.movies.toTypedArray())
+                notifyNewData(catalog)
+            }
+
+            Snackbar.make(
+                findViewById(R.id.main),
+                getString(R.string.saved_movies),
+                Snackbar.LENGTH_SHORT
+            )
+                .show()
+        } else {
+            Snackbar.make(
+                findViewById(R.id.main),
+                getString(R.string.no_movies),
+                Snackbar.LENGTH_SHORT
+            )
+                .show()
+        }
+    }
+
+    private fun notifyNewData(response: CatalogEntity) {
+        when {
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED -> {
+                val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+                    .setSmallIcon(R.drawable.ic_launcher_foreground)
+                    .setContentTitle(getString(R.string.saved_movies))
+                    .setContentText(response.movies.toString() ?: "")
+                    .setPriority(NotificationCompat.PRIORITY_HIGH)
+                NotificationManagerCompat.from(this).notify(1, builder.build())
+            }
+
+            else -> {
+                // Utilisez le ActivityResultLauncher enregistré précédemment
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
+
+    companion object {
+        const val CHANNEL_ID = "fr_nextu_etienne_cellier_channel_notification"
     }
 }

@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import fr.nextu.cellier_etienne.dao.MovieDAO
 import fr.nextu.cellier_etienne.entity.MovieEntity
 
-@Database(entities = [MovieEntity::class], version = 1)
+@Database(entities = [MovieEntity::class], version = 2)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun movieDao(): MovieDAO
@@ -17,7 +17,7 @@ abstract class AppDatabase : RoomDatabase() {
             return Room.databaseBuilder(
                 applicationContext,
                 AppDatabase::class.java, "project_kotlin.db"
-            ).build()
+            ).fallbackToDestructiveMigration().build()
         }
     }
 }
