@@ -1,6 +1,7 @@
 package fr.nextu.cellier_etienne
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -59,6 +60,10 @@ class MovieActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.button_save).setOnClickListener {
             saveMoviesInDB()
+        }
+
+        findViewById<Button>(R.id.button_home).setOnClickListener {
+            startActivity(Intent(this, MainActivity::class.java))
         }
 
         movies_recycler = findViewById<RecyclerView>(R.id.recyclerview_third).apply {
@@ -147,25 +152,28 @@ class MovieActivity : AppCompatActivity() {
     }
 
     private fun notifyNewData(response: CatalogEntity) {
+        val notificationText = response.movies.joinToString(separator = "\n") { it.toString() }
+
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle(getString(R.string.saved_movies))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(notificationText))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+
         when {
             ContextCompat.checkSelfPermission(
                 this,
                 Manifest.permission.POST_NOTIFICATIONS
             ) == PackageManager.PERMISSION_GRANTED -> {
-                val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-                    .setSmallIcon(R.drawable.ic_launcher_foreground)
-                    .setContentTitle(getString(R.string.saved_movies))
-                    .setContentText(response.movies.toString() ?: "")
-                    .setPriority(NotificationCompat.PRIORITY_HIGH)
                 NotificationManagerCompat.from(this).notify(1, builder.build())
             }
 
             else -> {
-                // Utilisez le ActivityResultLauncher enregistré précédemment
                 requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
     }
+
 
     companion object {
         const val CHANNEL_ID = "fr_nextu_etienne_cellier_channel_notification"

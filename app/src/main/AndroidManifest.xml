@@ -16,6 +16,9 @@
         android:theme="@style/Theme.ProjetKotlin"
         tools:targetApi="31">
         <activity
+            android:name=".CatalogActivity"
+            android:exported="false" />
+        <activity
             android:name=".MovieActivity"
             android:exported="false"
             android:theme="@style/Theme.ProjetKotlin" />
